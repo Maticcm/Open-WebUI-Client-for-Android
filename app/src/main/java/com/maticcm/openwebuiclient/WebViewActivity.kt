@@ -264,6 +264,19 @@ class WebViewActivity : AppCompatActivity() {
             fun log(message: String) {
                 Log.d("WebViewActivity", "JavaScript: $message")
             }
+
+            @JavascriptInterface
+            fun openLink(url: String) {
+                runOnUiThread {
+                    Log.d("WebViewActivity", "Opening link: $url")
+                    try {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                        startActivity(intent)
+                    } catch (e: Exception) {
+                        Log.e("WebViewActivity", "Error opening link: $url", e)
+                    }
+                }
+            }
         }, "Android")
 
         binding.webView.setLayerType(WebView.LAYER_TYPE_HARDWARE, null)
@@ -359,6 +372,7 @@ class WebViewActivity : AppCompatActivity() {
                 isWebViewReady = true
                 Log.d("WebViewActivity", "WebView loaded: $url")
                 injectImageHandlingScript()
+                injectLinkHandlingScript()
                 
                 // Inject JavaScript to handle microphone access
                 val microphoneScript = """
@@ -608,6 +622,78 @@ class WebViewActivity : AppCompatActivity() {
         binding.webView.evaluateJavascript(javascript, null)
     }
 
+    private fun injectLinkHandlingScript() {
+        val javascript = """
+            (function() {
+                window.Android.log('Setting up link handling');
+                
+                // Function to handle link clicks
+                function handleLinkClick(e) {
+                    const target = e.target;
+                    let link = null;
+                    
+                    // Check if clicked element is a link or inside a link
+                    if (target.tagName === 'A') {
+                        link = target;
+                    } else if (target.closest('a')) {
+                        link = target.closest('a');
+                    }
+                    
+                    if (link && link.href) {
+                        const url = link.href;
+                        window.Android.log('Link clicked: ' + url);
+                        
+                        // Check if it's an external link (not same origin)
+                        const currentOrigin = window.location.origin;
+                        const linkUrl = new URL(url, window.location.href);
+                        
+                        if (linkUrl.origin !== currentOrigin) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            window.Android.openLink(url);
+                            return false;
+                        }
+                    }
+                    
+                    return true;
+                }
+                
+                // Add click listener to document
+                document.addEventListener('click', handleLinkClick, true);
+                
+                // Handle dynamically added links
+                const observer = new MutationObserver(function(mutations) {
+                    mutations.forEach(function(mutation) {
+                        if (mutation.addedNodes.length) {
+                            mutation.addedNodes.forEach(function(node) {
+                                if (node.nodeType === 1) { // Element node
+                                    // Check if the added node is a link
+                                    if (node.tagName === 'A') {
+                                        node.addEventListener('click', handleLinkClick, true);
+                                    }
+                                    // Check for links inside the added node
+                                    const links = node.querySelectorAll ? node.querySelectorAll('a') : [];
+                                    for (let i = 0; i < links.length; i++) {
+                                        links[i].addEventListener('click', handleLinkClick, true);
+                                    }
+                                }
+                            });
+                        }
+                    });
+                });
+                
+                observer.observe(document.body, {
+                    childList: true,
+                    subtree: true
+                });
+                
+                window.Android.log('Link handling setup complete');
+            })();
+        """.trimIndent()
+        
+        binding.webView.evaluateJavascript(javascript, null)
+    }
+
     private fun showConnectionError() {
         Log.e("WebViewActivity", "Connection failed or timed out")
         binding.webView.loadUrl("about:blank")
@@ -719,6 +805,7 @@ class WebViewActivity : AppCompatActivity() {
                     isWebViewReady = true
                     Log.d("WebViewActivity", "WebView loaded: $url")
                     injectImageHandlingScript()
+                    injectLinkHandlingScript()
                 }
 
                 override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {

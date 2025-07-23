@@ -34,7 +34,8 @@
         <activity
             android:name=".WelcomeActivity"
             android:exported="true"
-            android:theme="@style/Theme.OpenWebUIClient.NoActionBar">
+            android:theme="@style/Theme.OpenWebUIClient.NoActionBar"
+            android:configChanges="orientation|screenSize|keyboardHidden">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -43,11 +44,13 @@
         <activity
             android:name=".IpInputActivity"
             android:exported="false"
-            android:theme="@style/Theme.OpenWebUIClient.NoActionBar" />
+            android:theme="@style/Theme.OpenWebUIClient.NoActionBar"
+            android:configChanges="orientation|screenSize|keyboardHidden" />
         <activity
             android:name=".WebViewActivity"
             android:exported="true"
-            android:theme="@style/Theme.OpenWebUIClient.NoActionBar">
+            android:theme="@style/Theme.OpenWebUIClient.NoActionBar"
+            android:configChanges="orientation|screenSize|keyboardHidden">
             <!-- Handle image sharing -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
