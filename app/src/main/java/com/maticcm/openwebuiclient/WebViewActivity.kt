@@ -1154,23 +1154,12 @@ class WebViewActivity : AppCompatActivity() {
                 imageFile
             )
             Log.d("WebViewActivity", "Created camera URI: $cameraImageUri")
-
-            // Grant URI permissions
-            val takePictureIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
-                putExtra(MediaStore.EXTRA_OUTPUT, cameraImageUri)
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-            }
-
-            // Check if there's a camera app available
-            if (takePictureIntent.resolveActivity(packageManager) != null) {
-                cameraLauncher.launch(cameraImageUri)
-                Log.d("WebViewActivity", "Launched camera")
-            } else {
-                Log.e("WebViewActivity", "No camera app available")
-                filePathCallback?.onReceiveValue(null)
-                filePathCallback = null
-            }
+            cameraLauncher.launch(cameraImageUri)
+            Log.d("WebViewActivity", "Launched camera")
+        } catch (e: android.content.ActivityNotFoundException) {
+            Log.e("WebViewActivity", "No camera app available", e)
+            filePathCallback?.onReceiveValue(null)
+            filePathCallback = null
         } catch (e: Exception) {
             Log.e("WebViewActivity", "Error launching camera", e)
             filePathCallback?.onReceiveValue(null)
