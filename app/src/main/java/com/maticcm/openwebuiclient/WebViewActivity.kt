@@ -96,6 +96,7 @@ class WebViewActivity : AppCompatActivity() {
     private val MICROPHONE_PERMISSION_REQUEST = 101
     private var pendingCameraCapture = false
     private var pendingMicrophoneAccess = false
+    private var pendingPermissionRequest: PermissionRequest? = null
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -108,8 +109,8 @@ class WebViewActivity : AppCompatActivity() {
             }
             if (pendingMicrophoneAccess) {
                 pendingMicrophoneAccess = false
-                // Inject JavaScript to notify the web page that permission was granted
-                injectMicrophonePermissionGranted()
+                pendingPermissionRequest?.grant(arrayOf(PermissionRequest.RESOURCE_AUDIO_CAPTURE))
+                pendingPermissionRequest = null
             }
         } else {
             Log.e("WebViewActivity", "Permission denied")
@@ -118,7 +119,9 @@ class WebViewActivity : AppCompatActivity() {
                 filePathCallback = null
             }
             if (pendingMicrophoneAccess) {
-                injectMicrophonePermissionDenied()
+                pendingMicrophoneAccess = false
+                pendingPermissionRequest?.deny()
+                pendingPermissionRequest = null
             }
         }
     }
@@ -243,23 +246,7 @@ class WebViewActivity : AppCompatActivity() {
             binding.webView.settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
         }
 
-        // Add JavaScript interface for microphone permission
         binding.webView.addJavascriptInterface(object {
-            @JavascriptInterface
-            fun requestMicrophonePermission() {
-                runOnUiThread {
-                    Log.d("WebViewActivity", "Microphone permission requested from JavaScript")
-                    if (checkMicrophonePermission()) {
-                        Log.d("WebViewActivity", "Microphone permission already granted")
-                        injectMicrophonePermissionGranted()
-                    } else {
-                        Log.d("WebViewActivity", "Requesting microphone permission")
-                        pendingMicrophoneAccess = true
-                        requestMicrophonePermission()
-                    }
-                }
-            }
-
             @JavascriptInterface
             fun log(message: String) {
                 Log.d("WebViewActivity", "JavaScript: $message")
@@ -296,12 +283,11 @@ class WebViewActivity : AppCompatActivity() {
                 if (request.resources.contains(PermissionRequest.RESOURCE_AUDIO_CAPTURE)) {
                     if (checkMicrophonePermission()) {
                         Log.d("WebViewActivity", "Granting microphone permission")
-                        // Inject JavaScript to notify the web page that permission was granted
-                        injectMicrophonePermissionGranted()
                         request.grant(arrayOf(PermissionRequest.RESOURCE_AUDIO_CAPTURE))
                     } else {
                         Log.d("WebViewActivity", "Requesting microphone permission")
                         pendingMicrophoneAccess = true
+                        pendingPermissionRequest = request
                         requestMicrophonePermission()
                     }
                 } else {
@@ -373,39 +359,6 @@ class WebViewActivity : AppCompatActivity() {
                 Log.d("WebViewActivity", "WebView loaded: $url")
                 injectImageHandlingScript()
                 injectLinkHandlingScript()
-                
-                // Inject JavaScript to handle microphone access
-                val microphoneScript = """
-                    window.Android.log('Page loaded, setting up microphone access');
-                    
-                    // Create a global function to handle microphone access
-                    window.handleMicrophoneAccess = function() {
-                        window.Android.log('handleMicrophoneAccess called');
-                        return new Promise(function(resolve, reject) {
-                            window.Android.log('Requesting microphone permission');
-                            window.Android.requestMicrophonePermission();
-                            resolve();
-                        });
-                    };
-                    
-                    // Override getUserMedia if available
-                    if (window.navigator.mediaDevices) {
-                        window.Android.log('Media devices available');
-                        const originalGetUserMedia = window.navigator.mediaDevices.getUserMedia;
-                        window.navigator.mediaDevices.getUserMedia = function(constraints) {
-                            window.Android.log('getUserMedia called with constraints: ' + JSON.stringify(constraints));
-                            return window.handleMicrophoneAccess();
-                        };
-                    } else {
-                        window.Android.log('Media devices not available');
-                    }
-                    
-                    // Add error handling
-                    window.addEventListener('error', function(e) {
-                        window.Android.log('JavaScript error: ' + e.message);
-                    });
-                """.trimIndent()
-                binding.webView.evaluateJavascript(microphoneScript, null)
             }
 
             override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
@@ -1176,32 +1129,6 @@ class WebViewActivity : AppCompatActivity() {
             filePathCallback?.onReceiveValue(null)
             filePathCallback = null
         }
-    }
-
-    private fun injectMicrophonePermissionGranted() {
-        val javascript = """
-            window.Android.log('Microphone permission granted');
-            if (window.handleMicrophoneAccess) {
-                window.handleMicrophoneAccess().then(function() {
-                    window.Android.log('Microphone access resolved');
-                }).catch(function(error) {
-                    window.Android.log('Microphone access error: ' + error);
-                });
-            }
-        """.trimIndent()
-        binding.webView.evaluateJavascript(javascript, null)
-    }
-
-    private fun injectMicrophonePermissionDenied() {
-        val javascript = """
-            window.Android.log('Microphone permission denied');
-            if (window.handleMicrophoneAccess) {
-                window.handleMicrophoneAccess().catch(function(error) {
-                    window.Android.log('Microphone access error: ' + error);
-                });
-            }
-        """.trimIndent()
-        binding.webView.evaluateJavascript(javascript, null)
     }
 
     private fun checkMicrophonePermission(): Boolean {
