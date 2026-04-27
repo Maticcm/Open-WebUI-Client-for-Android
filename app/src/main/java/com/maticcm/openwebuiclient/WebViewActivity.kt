@@ -1039,14 +1039,12 @@ class WebViewActivity : AppCompatActivity() {
                 if (activePointers.size < REQUIRED_FINGERS) {
                     isLongPressing = false
                     hideLongPressIndicator()
-                    timeoutHandler.removeCallbacksAndMessages(null)
                 }
             }
             MotionEvent.ACTION_CANCEL -> {
                 activePointers.clear()
                 isLongPressing = false
                 hideLongPressIndicator()
-                timeoutHandler.removeCallbacksAndMessages(null)
             }
         }
         return false
