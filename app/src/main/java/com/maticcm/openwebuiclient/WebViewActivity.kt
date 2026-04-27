@@ -174,9 +174,6 @@ class WebViewActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // Initialize WebView settings globally for better performance
-        WebView.enableSlowWholeDocumentDraw()
-        
         binding = ActivityWebviewBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
