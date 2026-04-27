@@ -696,7 +696,27 @@ class WebViewActivity : AppCompatActivity() {
 
     private fun showConnectionError() {
         Log.e("WebViewActivity", "Connection failed or timed out")
-        binding.webView.loadUrl("about:blank")
+        binding.progressBar.isVisible = false
+        val displayUrl = android.text.Html.escapeHtml(baseUrl)
+        val html = """
+            <html>
+            <head>
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                <style>
+                    body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #111827; color: #e5e7eb; text-align: center; padding: 24px; box-sizing: border-box; }
+                    h2 { margin: 0 0 8px; }
+                    .url { color: #9ca3af; word-break: break-all; margin-bottom: 24px; }
+                    .retry { padding: 12px 32px; background: #3b82f6; color: white; border-radius: 8px; text-decoration: none; font-size: 16px; }
+                </style>
+            </head>
+            <body>
+                <h2>Connection failed</h2>
+                <p class="url">$displayUrl</p>
+                <a class="retry" href="$baseUrl">Retry</a>
+            </body>
+            </html>
+        """.trimIndent()
+        binding.webView.loadDataWithBaseURL(baseUrl, html, "text/html", "UTF-8", null)
     }
 
     private fun handleIntent(intent: Intent) {
