@@ -45,6 +45,11 @@ class IpInputActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
+            if (!url.startsWith("http://") && !url.startsWith("https://")) {
+                showError("URL must start with http:// or https://")
+                return@setOnClickListener
+            }
+
             // Save the URL and mark setup as complete
             getSharedPreferences("AppPrefs", MODE_PRIVATE)
                 .edit()
